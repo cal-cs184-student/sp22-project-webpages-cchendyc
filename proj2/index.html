@@ -1,7 +1,340 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+  <style>
+    body {
+      padding: 100px;
+      width: 1000px;
+      margin: auto;
+      text-align: left;
+      font-weight: 300;
+      font-family: 'Open Sans', sans-serif;
+      color: #121212;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Source Sans Pro', sans-serif;
+    }
+  </style>
+  <title>CS 184 Mesh Editor</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+  <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
+  <h1 align="middle">Project 2: Mesh Editor</h1>
+  <h2 align="middle">Cindy Chen, Hang Yin, CS184-veryrandome</h2>
+
+
+
+  <div>
+
+    <h2 align="middle">Overview</h2>
+
+    <p>
+      In this project, we first learned how to use the De Casteljau's algorithm to find Bezier Curves and Surfaces. In part 2, we used Phong Shading, edge flip, and split to
+      do mesh upsampling. We spent a lot of time debugging q6, but the problem showed up in our splitting phase. The upsampling is also very useful in a sense that when we are
+      in the process of modeling, adding edges will change the balance when smoothing the object. The Bezier Curves part is a little bit boring comparing to part 2. Overall, it's
+      more fun and useful comparing to project 1, thanks for the detailed instructions and resources in the spec this time.
+    </p>
+  <br><br>
+    <h2 align="middle">Section I: Bezier Curves and Surfaces</h2>
+
+    <h3 align="middle">Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
+
+    <p>De Casteljau's algorithm is used to find a point on a Bezier Curve by recursively cutting lines with a certain ratio. Given n points with n-1 splines,
+      we can therefore subdivide each of the line into two parts: t and 1-t, with a point. such point can be labeled as p_1'...p_(n-1)'. t is a parameter that
+      can be adjusted from 0 to 1. We repeated this process recursively for every single line, and our final points will be on the Bezier curve, as desired.
+      In our implementation, in order to get the points for the next subdivision level, we calculate p’ for each point with the
+      formula p_i‘ = (1 - t)p_i + tp_(i + 1) recursively. Here is our own Bezier curve with 6 control points of our choosing (step 1-7). 8 is the screenshot of a
+      slightly different Bezier curve.
+    </p>
+
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/1.1.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 1.1: Step 1.</figcaption>
+          </td>
+          <td>
+            <img src="images/1.2.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 1.2: Step 2.</figcaption>
+          </td>
+        </tr>
+        <br>
+        <tr>
+          <td>
+            <img src="images/1.3.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 1.3: Step 3.</figcaption>
+          </td>
+          <td>
+            <img src="images/1.4.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 1.4: Step 4.</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <img src="images/1.5.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 1.5: Step 5.</figcaption>
+          </td>
+          <td>
+            <img src="images/1.6.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 1.6: Step 6.</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <img src="images/1.7.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 1.7: Step 7.</figcaption>
+          </td>
+          <td>
+            <img src="images/1.8.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 1.8: Slightly Different Bezier Curve.</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+  <br><br>
+    <h3 align="middle">Part 2: Bezier surfaces with separable 1D de Casteljau subdivision</h3>
+
+        <p>First, since controlPoints is 2D n*n, for each row of control points, we calculate their Bezier curves and find points that lies on the Bezier curves
+          respectively with respect to then u dimension. With all of those points that lie on those Bezier curves,
+          we calculate the Bezier curve with these points with respect to the parameter v. In this case, we will have a
+          n*n points to generate the Bezier surfaces. This is very similar to the de Casteljau algorithm in q1, we basically extends to Bezier surfaces
+          by recursively calling the evaluate1D function. In our implemention, we loop through the rows of controlPoints in the evaluate function by repeatedly
+          calling evaluate1D, which will get the points on Bezier curves until the middle one is found. In this way, all Bezier curves in the u dimension are done,
+          and we then run evaluate1D function one last time with the scalar interpolation parameter t, which will generate the final Bezier surface.
+        </p>
+          <div align="middle">
+            <table style="width=100%">
+              <tr>
+                <td>
+                  <img src="images/2.1.png" align="middle" width="600px"/>
+                  <figcaption align="middle">Fig 2: Teapot with Bezier Surfaces</figcaption>
+                </td>
+              </tr>
+              <br>
+            </table>
+          </div>
+  <br><br>
+
+    <h2 align="middle">Section II: Sampling</h2>
+    <h3 align="middle">Part 3: Average normals for half-edge meshes</h3>
+    <p>
+      For each face, we first get the three vertices associated with it.
+      Then, we subtract two pairs of these three vertices and cross multiply
+      them to get the normal vector that’s pointing out from the surface. A normal of a face is a vector perpendicular to the surface
+      at a given point, and we know that the cross product of two vectors along the face can produce a third vector perpendicular to the two vectors,
+      which is in a correct direction and can be used as a normal after normalization. Therefore, in our implemention, for each mesh, we start with a HalfedgeCIter h.
+      Looping and summing through the halfedge edge, we first get a vertex v0 with h->vertex(), a vertex v1 with h_twin->vertex(), and a vertex v2 with h_twin->next()->next()->vertex(),
+      then we calcualte the cross product of between v1 - v2 and v3 - v1 for a area-weighted normal. Doing this for all neighboring faces, and we have the correct normals for the meshes.
+    </p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/3.1.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 3.1: Flat Shading.</figcaption>
+          </td>
+          <td>
+            <img src="images/3.2.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 3.2: Phong Shading.</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+
+  <br><br>
+
+
+    <h3 align="middle">Part 4: Half-edge flip</h3>
+    <p> To flip a half-edge, we need to disconnect the current half-edge, connect the other two vertices that haven't been connected,
+      and reassign all the related pointers. Each time, we ignore the boundary cases by checking isBoundary().
+      According to the recommend steps, for step 1, we draw a diagram to show the half edges before and after the flip, and
+      retrieve all the halfedges, faces, and vertices. In our implemention, we simply created variabel for each vertex, edge, halfedge, face and updated according to the
+      graph. starting with halfedges and vertices, then with properties to all the halfedges (next, face, setNeighbors).
+    </p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/4.1.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 4.1: Before.</figcaption>
+          </td>
+          <td>
+            <img src="images/4.2.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 4.2: Flipped.</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <img src="images/4.3.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 4.3: Teapot Before.</figcaption>
+          </td>
+          <td>
+            <img src="images/4.4.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 4.4: Teapot Flipped.</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+
+  <br><br>
+    <h3 align="middle">Part 5: Half-edge split</h3>
+      <p>
+Similar to q4, we draw the diagram first to keep track of the changes for each component. After splitting the shared edge
+of the original two triangles, there are new faces and edges introduced accordingly. It's very easy to create new but not
+necessary faces during our coding, and it's very hard to keep track on what we've already reassigned because the half-edges
+go through a cycle. In our implemention, we first remembered all the original variables, saved cb as cm, bc as bm, created new edges and halfedges
+for mb and mc. After finishing the split on point m, we also created new edges and halfedges horizontally by adding am, md, dm, ma, and the vertex m itself with position (b+c)/2.
+we reassign abcd just in case. Then we created 2 new faces, and reassign halfedge, face, setNeighbors, and etc according to the graph.
+  </p>
+  <div align="middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="images/4.1.png" align="middle" width="400px" />
+          <figcaption align="middle">Fig 5.1: Before.</figcaption>
+        </td>
+        <td>
+          <img src="images/5.2.png" align="middle" width="400px" />
+          <figcaption align="middle">Fig 5.2: Splitted.</figcaption>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <img src="images/5.3.png" align="middle" width="400px" />
+          <figcaption align="middle">Fig 5.3: Teapot Before Splitted.</figcaption>
+        </td>
+        <td>
+          <img src="images/5.4.png" align="middle" width="400px" />
+          <figcaption align="middle">Fig 4.4: Teapot Splitted.</figcaption>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <img src="images/5.5.png" align="middle" width="400px" />
+          <figcaption align="middle">Fig 4.3: Teapot Before Flipped and Splitted.</figcaption>
+        </td>
+        <td>
+          <img src="images/5.6.png" align="middle" width="400px" />
+          <figcaption align="middle">Fig 4.4: Teapot Flipped and Splitted.</figcaption>
+        </td>
+      </tr>
+      <br>
+    </table>
+  </div>
+  <br><br>
+    <h3 align="middle">Part 6: Loop subdivision for mesh upsampling</h3>
+    <p>
+      Following the steps in the instructions, we calcualted the update old vertices positions by looping through
+      the original mesh vertices. save n as degree, if n == 3, u == 3/16, else u == 3.0 / (8.0 * n) according to
+      the value suggestions. We started from the first halfedge. Begining with the original position and summing all the vertex positions around the existing vertex, used
+      (1.0 - n * u) * current_position + u * sum to update the position. Then we stored new v position for every vertices after assigning weights with 3/8 * (a+b) + 1/8 * (c+d) in
+      a vector new_v_positions. Up until this point, all isNew attribute of vertices are false.
+      Now we started the process of splitting every edge in the mesh with the splitEdge function. Splitting every edge and mark all the new edges with its isNew property and
+      getting the new vertex, we updated its newPosition to what we've stored in
+      new_v_positions and created new halfedges within it. Then for the last major part, we flip the edge if its new and one of its the two vertices is not new.
+      We also copied and updated these new vertex positions into final Vertex::position.
+    </p>
+
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/6.1pre.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Fig 6.1: Vertex Position Updates (from spec).</figcaption>
+          </td>
+          <td>
+            <img src="images/6.2pre.jpeg" align="middle" width="400px" />
+            <figcaption align="middle">Fig 6.2: Split and Flip for Mesh Upsampling (from spec).</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+<p>
+We found a wrong setNeighbors for h7 with wrong vertex in the splitEdge function when checking for upsampling, everything looked alright for a small size subdivision,
+but the mesh pattern looks odd when the subdivision gets larger.
+</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/6.1.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.3: upsample original.</figcaption>
+          </td>
+          <td>
+            <img src="images/6.2.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.4: upsample 1.</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <img src="images/6.3.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.5: upsample 2.</figcaption>
+          </td>
+          <td>
+            <img src="images/6.4.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.6: upsample 3.</figcaption>
+          </td>
+          <td>
+            <img src="images/6.5.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.7: upsample 4.</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <p>
+      By looking at the Fig 6.3: upsample original, and comparing it with Fig 6.4-6.7, we observed an asymmetric pattern after subdivision.
+      With the original mesh being asymmetrical, it's clear that after the process of subdivision, for corners
+      that have fewers edges connecting (in different degrees n), the outcomes look sharp after upsampling. To update the position,
+      we used  (1.0 - n * u) * current_position + u * sum to update the position, which is dependent on these degrees.
+      Since we calcualte the new vertex with (v0->position + v1->position)/2.0, v2 and v3, although with similar geometrical pattern,
+      have an imbalanced topologicial representation. By pre-splitting and increasing symmetry of the meshes,
+      we can resolve this issue easily. Belows are samples with splitting the diagonal edges for every single face and then do upsampling.
+    </p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/6.6.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.8: upsample original pre-splitted.</figcaption>
+          </td>
+          <td>
+            <img src="images/6.7.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.9: upsample 1 pre-splitted.</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <img src="images/6.8.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.10: upsample 2 pre-splitted.</figcaption>
+          </td>
+          <td>
+            <img src="images/6.9.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.11: upsample 3 pre-splitted.</figcaption>
+          </td>
+          <td>
+            <img src="images/6.10.png" align="middle" width="300px" />
+            <figcaption align="middle">Fig 6.12: upsample 4 pre-splitted.</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+</body>
+
 </html>
