@@ -1,7 +1,256 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <style>
+    body {
+      padding: 100px;
+      width: 1000px;
+      margin: auto;
+      text-align: left;
+      font-weight: 300;
+      font-family: 'Open Sans', sans-serif;
+      color: #121212;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Source Sans Pro', sans-serif;
+    }
+  </style>
+<title>Your Name  |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 3: PathTracer</h1>
+<br />
+    <h2 align="middle">Cindy Chen / Hang Yin, CS184-veryrandom3-2</h2>
+<br >
+    <div class="padded">
+      <h2 align="middle">Overview</h2>
+    <p>
+      In this project, we chose part 1 and part 2 to implement. We ended up with successfully rendering mirror, glass, and microfacet materials.
+      For each material, we used different BRDFs to sample and model lights. In part 1, we finished the reflection and refraction function, and looked at
+      different bounces and their corresponding outcomes. In part 2, we wrote the Microfacet BRDF function with Beckmann NDF and Importance Sampling.
+      One interesting takeaway in this part is the fact that we used Schlick's approximation for the Fresnel term in part 1 for air-dielectric interfaces.
+      However, for air-conductor in part 2, we need to calcualte F with eta and k because it is wavelength-dependent. The task 4 in part 2 took us sometimes
+      , since we needed to research on how to calculate wi and h. The part where we can use different eta and k to render different conductor materials was a lot of fun.
+
+    </p>
+<!--
+    Show a sequence of six images of scene CBspheres.dae rendered with max_ray_depth set to 0, 1, 2, 3, 4, 5, and 100.
+    The other settings should be at least 64 samples per pixel and 4 samples per light.
+
+    Point out the new multibounce effects that appear in each image.
+
+    Explain how these bounce numbers relate to the particular effects that appear.
+  -->
+    <h2 align="middle">Part 1: Mirror and Glass Materials</h2>
+
+
+        <p>
+          For this part, we first implemented BSDF::reflect() w.r.t the z axis by setting x, y of wi to -wo.x and -wo.y, and z to wo.z. We
+          used it directly in the mirror sample to get reflectance / abs_cos_theta(*wi) with pdf = 1, and a small offset.
+          For RefractionBSDF::sample_f(), we checked wo.z for entering and exiting, and setted eta differently accordingly when there is a valid refraction.
+          For glass, we followed the Schlick's approximation to find R0 and R, and used a coin_flip(R) to sample reflection and refraction if
+          it is not total internal reflection instead of really separating the incoming light into the reflection and refraction portion.
+          It was a little bit hard for us to figure out indices of refraction, but the hint in wikipedia of
+          n1 are largely approximated as 1 helped us to solve the problem.
+        </p>
+        <p>
+          As required by the writeup spec, we generated 7 images with at least 64 samples per pixel and 4 samples per light with
+          max_ray_depth = 0, 1, 2, 3, 4, 5, and 100 below. Specifically, -t 8 -s 256 -l 4 -m 0 ../dae/sky/CBspheres.dae.
+        </p>
+        <p>
+          The brightnesses of the scenes are increasing as we increase the max_ray_depth.
+          When max_ray_depth=0 (Fig 1.1), we have 0-bounce, and therefore only the light source can be seen.
+        </p>
+        <p>
+          With max_ray_depth=1 (Fig 1.2),
+          all the effects of the direct illuminations are shown (0 and 1-bounce), and we can observe the environment more comparing to 1.1 with
+          the rendered floor, walls, and the reflection of the light source bouncing into the camera.
+          However, we can't see detailed reflections on neither the mirror nor the glass objects (their shadows are black as well).
+          Comparing to the highlight on the glass(right sphere) to it on the mirror(left),
+          we can see some noises and grains on the glass because not all the sampled rays reflected and refracted according to the coin_flip.</p>
+      <p>
+          Next, for max_ray_depth=2 (Fig 1.3) with (0,1,2-bounce), the scene looks brighter and the ceiling is renderred.
+          Both spheres are more detailed, and we can clearly see the reflection from 1-bounce on the mirror (left sphere).
+          The glass (right) looks cloudy and grainy again due to the coin_flip on the surface, but it still have the reflection and reflection from
+          1-bounce as well. Since there are only 1 round of indirect lighting, all rays got reflected/refracted can't countinue to go out from the glass
+          sphere and therefore it doesn't look as transparent. Both shadows look better, but the one for glass is still very grainy.
+      </p>
+          <p>
+          Then, for max_ray_depth=3 (Fig 1.4) with with (0,1,2,3-bounce), we have more indirect lightings. The reflections of ceiling and self-shadow on the mirror sphere are
+          more accurate instead of black on 1.3 (the glass sphere reflection looks a little better but still grainy),
+          because now the reflection used is with 2-bounce. The glass mirror is transparent and the reflection/refraction on it look clear with
+          the white wall behind and the blue wall instead of the entire front frame in 1.3.
+        </p>
+      <p>
+        For max_ray_depth=4 (Fig 1.5). The reflections of ceiling on the mirror sphere and self-shadow looks way more accurate. Intersectingly,
+        there's a little glare on the blue wall due to the reflection of the glass sphere, which itself looks brighter as well.
+        Finally for max_ray_depth=5 (Fig 1.6) and max_ray_depth=100 (Fig 1.7), the scene looks similar and there's not a lot of imporvement in details
+        other than the brightness. Comparing the last two scene, there's almost no different as the stimulation result has converged.
+        </p>
+        <div align="middle">
+          <table style="width=100%">
+            <tr>
+              <td>
+                <img src="images/1-0.png" align="middle" width="400px" />
+                <figcaption align="middle">Fig 1.1: max_ray_depth=0.</figcaption>
+              </td>
+              <td>
+                <img src="images/1-1.png" align="middle" width="400px" />
+                <figcaption align="middle">Fig 1.2: max_ray_depth=1.</figcaption>
+              </td>
+            </tr>
+            <tr>
+            <td>
+              <img src="images/1-2.png" align="middle" width="400px" />
+              <figcaption align="middle">Fig 1.3: max_ray_depth=2.</figcaption>
+            </td>
+            <td>
+              <img src="images/1-3.png" align="middle" width="400px" />
+              <figcaption align="middle">Fig 1.4: max_ray_depth=3.</figcaption>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <img src="images/1-4.png" align="middle" width="400px" />
+              <figcaption align="middle">Fig 1.5: max_ray_depth=4.</figcaption>
+            </td>
+            <td>
+              <img src="images/1-5.png" align="middle" width="400px" />
+              <figcaption align="middle">Fig 1.6: max_ray_depth=5.</figcaption>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <img src="images/1-100.png" align="middle" width="400px" />
+              <figcaption align="middle">Fig 1.7: max_ray_depth=100.</figcaption>
+            </td>
+          </tr>
+            <br>
+          </table>
+        </div>
+
+        <!--
+        Show a sequence of 4 images of scene CBdragon_microfacet_au.dae rendered with \alphaα set to 0.005, 0.05, 0.25 and 0.5.
+         The other settings should be at least 128 samples per pixel and 1 samples per light. The number of bounces should be at least 5.
+         Describe the differences between different images. Note that, to change the \alphaα, just open the .dae file and search for microfacet.
+
+        Show two images of scene CBbunny_microfacet_cu.dae rendered using cosine hemisphere sampling (default) and your importance sampling.
+        The sampling rate should be fixed at 64 samples per pixel and 1 samples per light.
+        The number of bounces should be at least 5. Briefly discuss their difference.
+        Show at least one image with some other conductor material, replacing eta and k.
+        Note that you should look up values for real data rather than modifying them arbitrarily.
+        Tell us what kind of material your parameters correspond to. -->
+    <h2 align="middle">Part 2: Microfacet Material</h2>
+    <p>
+    For this part, we implemented the Microfacet model BRDF with Beckmann distribution and importance sampling. Since the macro surface's
+    smoothness and glareness are controlled by alpha, and we need to calcualte normal h and its pdf by sampling theta_h and phi_h with NDF = Beckmann distribution,
+    they can be fairly different depending on the regions. During the process of coding, we followed the spec to fill out f, F, and D, and for task 4,
+    we spent some time researching on how to calcualte needed items:
+    we figured out the convertion from theta_h and phi_h to h by looking at the Cartesian coordinate conversions section
+    <a href="https://en.wikipedia.org/wiki/Spherical_coordinate_system">here</a>, for wi*, we looked at the hint on piazza and the
+    instruction <a href="https://stackoverflow.com/questions/5454661/reflection-how-do-i-do-it">here</a> in the sample_f function.
+    After generating 2 random numbers, we used it to calcualte the pdf p_wi.
+    we setted pdf = 0 and return Vector3D(0.0, 0.0, 0.0) if dot(n, *wi) < 0, and used the outcome p_wi and f(wo, *wi) if the sample is valid.
+  </p>
+
+    <p>
+      Here is a sequence of 4 images of scene CBdragon_microfacet_au.dae rendered with alpha 0.005, 0.05, 0.25 and 0.5 according to the given
+      requirment in the spec. Specifically, we used -t 8 -s 128 -l 1 -m 5 ../dae/sky/CBdragon_microfacet_au.dae. In this case, while we are changing
+      alpha, we are essentially changing the roughness. As alpha goes larger, the macro surface looks more diffuse. When alpha = 0.005, the macro surface
+      looks very glossy comparing to it with alpha = 0.5.
+    </p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/2-1.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 2.1: CBdragon, alpha=0.005. </figcaption>
+          </td>
+          <td>
+            <img src="images/2-2.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 2.2: CBdragon, alpha=0.05.</figcaption>
+          </td>
+        </tr>
+        <tr>
+        <td>
+          <img src="images/2-3.png" align="middle" width="400px" />
+          <figcaption align="middle">Fig 2.3: CBdragon, alpha=0.25.</figcaption>
+        </td>
+        <td>
+          <img src="images/2-4.png" align="middle" width="400px" />
+          <figcaption align="middle">Fig 2.4: CBdragon, alpha=0.5.</figcaption>
+        </td>
+      </tr>
+        <br>
+      </table>
+    </div>
+
+    <!-- Show two images of scene CBbunny_microfacet_cu.dae rendered using cosine hemisphere sampling (default) and your importance sampling.
+    The sampling rate should be fixed at 64 samples per pixel and 1 samples per light.
+    The number of bounces should be at least 5. Briefly discuss their difference.
+
+    Show at least one image with some other conductor material, replacing eta and k.
+    Note that you should look up values for real data rather than modifying them arbitrarily.
+    Tell us what kind of material your parameters correspond to. -->
+    <p>
+      Next, we used CBbunny_microfacet_cu.dae with cosine hemisphere sampling and the new importance sampling.
+      Specifically, with -t 8 -s 64 -l 1 -m 5 ../dae/sky/CBbunny_microfacet_cu.dae. There are more noises overall with
+      cosine hemisphere sampling than with importance sampling because cosine hemisphere sampling weren't following the Beckmann
+      normal distribution function for each h, which provided the distribution of microfacets' normals.
+    </p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/2-5.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 2.5: CBbunny, cosine hemisphere sampling. </figcaption>
+          </td>
+          <td>
+            <img src="images/2-6.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 2.6: CBbunny, importance sampling.</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <!-- Show at least one image with some other conductor material, replacing eta and k.
+    Note that you should look up values for real data rather than modifying them arbitrarily.
+    Tell us what kind of material your parameters correspond to. -->
+    <p>
+      Finally, we renderred CBbunny_microfacet_cu.dae with Silver and Gold, we looked up the eta and k
+      <a href="https://refractiveindex.info/?shelf=main&book=Au&page=Johnson">here</a>, with wavelength
+      614 nm (red), 549 nm (green) and 466 nm (blue).
+      Specifically, for Silver: n = 0.059193, 0.059881, 0.047366
+      ; k = 4.1283, 3.5892, 2.8132. for Gold: n = 0.21646, 0.42833, 1.3284;
+      k = 3.2390, 2.4599, 1.8661. Again, we used -t 8 -s 64 -l 1 -m 5 ../dae/sky/CBbunny_microfacet_cu.dae.
+    </p>
+
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/2-7.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 2.7: CBbunny, Silver. </figcaption>
+          </td>
+          <td>
+            <img src="images/2-8.png" align="middle" width="400px" />
+            <figcaption align="middle">Fig 2.8: CBbunny, Gold.</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+</div>
+<h2 align="middle">Collaboration</h2>
+<p>
+We coded and wrote the write up together, so there's no specific section division. This project is hard and long even for a group of two, but in term of the partnership, we are cool with the current situation.
+</p>
+</body>
 </html>
